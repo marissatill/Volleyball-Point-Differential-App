@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Volleyball Point Tracker</title>
+  <style>
+    body { font-family: sans-serif; background: #f2f2f2; padding: 20px; }
+    h1 { text-align: center; }
+    .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 10px; }
+    .flex { display: flex; gap: 10px; flex-wrap: wrap; }
+    button { padding: 6px 12px; margin: 2px; }
+    select, input { padding: 6px; margin: 2px; }
+    .court { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(2, 60px); gap: 10px; margin: 20px 0; text-align: center; }
+    .player { border: 1px solid #333; border-radius: 6px; background: #e0e0e0; display: flex; justify-content: center; align-items: center; flex-direction: column; }
+    .net { grid-column: 1 / 4; text-align: center; font-weight: bold; margin-bottom: 10px; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>Volleyball Point Tracker</h1>
+
+  {% if message %}<p>{{ message }}</p>{% endif %}
+
+  <h2>Roster</h2>
+  <ul>
+    {% for p in roster %}
+      <li>{{ p }} ({{ scores[p] }})</li>
+    {% endfor %}
+  </ul>
+
+  <form method="post">
+    <input type="text" name="player_name" placeholder="New player name">
+    <button type="submit" name="add_player">Add Player</button>
+  </form>
+
+  <h2>On Court</h2>
+  <div class="court">
+    <div class="net">NET</div>
+    {% for player in on_court %}
+      <div class="player">
+        <strong>{{ player }}</strong>
+        <span>+{{ scores[player] }}</span>
+      </div>
+    {% endfor %}
+  </div>
+
+  <form method="post">
+    <button type="submit" name="plus1">+1 to all on court</button>
+    <button type="submit" name="minus1">-1 to all on court</button>
+    <button type="submit" name="rotate">Rotate</button>
+  </form>
+
+  <h2>Substitutions</h2>
+  <form method="post">
+    <label>Sub Out:
+      <select name="sub_out">
+        {% for p in sub_out_options %}
+          <option value="{{ p }}">{{ p }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Sub In:
+      <select name="sub_in">
+        {% for p in sub_in_options %}
+          <option value="{{ p }}">{{ p }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <button type="submit">Run Sub</button>
+  </form>
+</div>
+</body>
+</html>
