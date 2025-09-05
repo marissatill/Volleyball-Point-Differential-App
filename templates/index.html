@@ -6,245 +6,224 @@
 <style>
 body { margin:0; font-family:sans-serif; background-color:black; color:white; }
 h1 { color:#FF6C0C; text-align:center; margin-bottom:20px; }
-
-/* Titles row */
 .titles { display:grid; grid-template-columns:250px 1fr 250px; gap:20px; padding:0 20px; margin-bottom:5px; }
 .titles h2 { margin:0; text-align:center; color:white; }
-
-/* Container for the main content */
 .container { display:grid; grid-template-columns:250px 1fr 250px; gap:20px; padding:0 20px; }
-
-/* Roster */
 .roster { display:flex; flex-direction:column; gap:10px; margin-top:5px; }
 .player-item { display:flex; align-items:center; gap:10px; padding:5px; border-left:4px solid #0f0; cursor:pointer; font-family:monospace; }
 .player-item img { width:40px; height:40px; object-fit:cover; border-radius:50%; }
 .player-number { font-weight:bold; margin-right:5px; font-family:"Courier New", Courier, monospace; }
-
-/* Court */
 .court-container { display:flex; flex-direction:column; align-items:center; position:relative; margin-top:5px; }
 .court { display:grid; grid-template-columns: repeat(3, 140px); grid-template-rows: repeat(2, 140px); gap:15px; justify-content:center; align-items:center; margin-bottom:10px; }
 .court .player { display:flex; flex-direction:column; align-items:center; justify-content:center; background:#222; border-radius:10px; padding:10px; width:140px; height:140px; cursor:pointer; transition: transform 0.2s; }
 .court .player img { width:80px; height:80px; border-radius:50%; object-fit:cover; }
 .court .player.selected { outline: 3px solid #0ff; }
-
 .court.adjust-active { outline: 3px solid #FF6C0C; border-radius:12px; padding:8px; }
-
-.net {
-    grid-column: 1/4;
-    text-align: center;
-    font-weight: bold;
-    color: white;
-    font-size: 24px;
-    position:relative;
-    margin-bottom:10px;
-}
-.net::after {
-    content: "";
-    display: block;
-    height: 2px;
-    background: white;
-    width: calc(3*140px + 2*15px);
-    margin:5px auto 0 auto;
-}
-
+.net { grid-column: 1/4; text-align: center; font-weight: bold; color: white; font-size: 24px; position:relative; margin-bottom:10px; }
+.net::after { content: ""; display: block; height: 2px; background: white; width: calc(3*140px + 2*15px); margin:5px auto 0 auto; }
 .court-buttons { display:flex; justify-content:center; gap:10px; margin:5px 0; }
 button { padding:6px 12px; cursor:pointer; border:none; border-radius:5px; font-size:14px; }
 button#rotate, button#adjustLineupBtn { background:#FF6C0C; color:white; transition: 0.2s; }
 button#adjustLineupBtn.active { outline: 3px solid #FF6C0C; }
-
 .subs { display:flex; flex-direction:column; gap:15px; margin-top:5px; }
 .subs h2 { text-align:center; margin:5px 0; color:white; }
 .subs form { display:flex; flex-direction:column; gap:10px; }
 .subs label { display:inline-block; margin-right:5px; font-size:16px; }
 .subs select { padding:4px; font-size:16px; }
-
 .sub-row { display:flex; align-items:center; gap:5px; }
 </style>
 </head>
 <body>
-
 <h1>Caltech Volleyball Lineup Tracker</h1>
 
-<!-- Titles row -->
 <div class="titles">
-    <h2>Roster</h2>
-    <h2 style="visibility:hidden;">Placeholder</h2>
-    <h2>Substitutions</h2>
+  <h2>Roster</h2>
+  <h2 style="visibility:hidden;">Placeholder</h2>
+  <h2>Substitutions</h2>
 </div>
 
 <div class="container">
-
-<!-- Roster -->
-<div class="roster">
+  <!-- Roster -->
+  <div class="roster">
     {% for p in roster %}
     <div class="player-item" style="border-color: hsl({{ loop.index*50 % 360 }},100%,50%)">
+      <img src="{{ url_for('static', filename=p.image) if p.image else url_for('static', filename='default.png') }}">
+      <span class="player-number">{{p.number}}</span>
+      <span class="player-name">{{ p.name }}</span>
+      <span class="player-score" id="score-roster-{{p.name}}">({{p.score}})</span>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Court -->
+  <div class="court-container">
+    <div class="court" id="court">
+      <div class="net">Lineup</div>
+      {% for p in on_court %}
+      <div class="player" data-index="{{loop.index0}}">
         <img src="{{ url_for('static', filename=p.image) if p.image else url_for('static', filename='default.png') }}">
         <span class="player-number">{{p.number}}</span>
         <span class="player-name">{{ p.name }}</span>
-        <span class="player-score" id="score-roster-{{p.name}}">({{p.score}})</span>
+        <span class="player-score" id="score-court-{{p.name}}">({{p.score}})</span>
+      </div>
+      {% endfor %}
     </div>
-    {% endfor %}
-</div>
 
-<!-- Court -->
-<div class="court-container">
-    <div class="court" id="court">
-        <div class="net">Lineup</div>
-        {% for p in on_court %}
-        <div class="player" data-index="{{loop.index0}}">
-            <img src="{{ url_for('static', filename=p.image) if p.image else url_for('static', filename='default.png') }}">
-            <span class="player-number">{{p.number}}</span>
-            <span class="player-name">{{ p.name }}</span>
-            <span class="player-score" id="score-court-{{p.name}}">({{p.score}})</span>
-        </div>
-        {% endfor %}
-    </div>
     <div class="court-buttons">
-        <form method="post" style="display:inline;" onsubmit="setTimeout(refreshCourtScores, 100)">
-            <button type="submit" name="rotate" id="rotate">Rotate</button>
-        </form>
-        <button type="button" id="adjustLineupBtn">Adjust Lineup</button>
+      <button type="button" id="rotate">Rotate</button>
+      <button type="button" id="adjustLineupBtn">Adjust Lineup</button>
     </div>
 
-    <!-- Point Buttons -->
     <div class="court-buttons">
-        <button type="button" onclick="updateCourtPoints(1)" style="font-size:18px; padding:10px 20px; background:#28a745; color:white;">+ Add Point</button>
-        <button type="button" onclick="updateCourtPoints(-1)" style="font-size:18px; padding:10px 20px; background:#dc3545; color:white;">- Remove Point</button>
+      <button type="button" onclick="updateCourtPoints(1)" style="font-size:18px; padding:10px 20px; background:#28a745; color:white;">+ Add Point</button>
+      <button type="button" onclick="updateCourtPoints(-1)" style="font-size:18px; padding:10px 20px; background:#dc3545; color:white;">- Remove Point</button>
     </div>
-</div>
+  </div>
 
-<!-- Substitutions -->
-<div class="subs">
-    <form method="post" onsubmit="setTimeout(refreshCourtScores, 100)">
-        <div class="sub-row">
-            <label>Sub Out:</label>
-            <select name="sub_out">
-                {% for p in on_court %}
-                <option>{{p.name}}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="sub-row">
-            <label>Sub In:</label>
-            <select name="sub_in">
-                {% for p in roster %}
-                    {% if p.name not in on_court|map(attribute='name')|list %}
-                    <option>{{ p.name }}</option>
-                    {% endif %}
-                {% endfor %}
-            </select>
-        </div>
-        <button type="submit">Make Sub</button>
+  <!-- Substitutions -->
+  <div class="subs">
+    <form id="subForm">
+      <div class="sub-row">
+        <label>Sub Out:</label>
+        <select name="sub_out"></select>
+      </div>
+      <div class="sub-row">
+        <label>Sub In:</label>
+        <select name="sub_in"></select>
+      </div>
+      <button type="submit">Make Sub</button>
     </form>
+  </div>
 </div>
 
 <script>
-// ===================== POINTS TRACKING =====================
+// ------------------ GLOBAL ------------------
+let onCourtGlobal = {{ on_court|tojson }};
+let rosterGlobal = {{ roster|tojson }};
+
+// ------------------ UPDATE UI ------------------
+function updateCourtUI(data){
+  const {on_court, roster} = data;
+  onCourtGlobal = on_court;
+
+  const courtDivs = document.querySelectorAll('#court .player');
+  courtDivs.forEach((div, idx) => {
+    const player = on_court[idx];
+    div.querySelector('.player-number').textContent = player.number;
+    div.querySelector('.player-name').textContent = player.name;
+    div.querySelector('img').src = player.image ? `/static/${player.image}` : '/static/default.png';
+    const score = roster.find(p=>p.name===player.name)?.score ?? player.score;
+    div.querySelector('.player-score').textContent = `(${score})`;
+  });
+
+  // Update roster scores
+  roster.forEach(p => {
+    const span = document.getElementById(`score-roster-${CSS.escape(p.name)}`);
+    if(span) span.textContent = `(${p.score})`;
+  });
+
+  // Update sub dropdowns
+  const subOut = document.querySelector('select[name="sub_out"]');
+  const subIn = document.querySelector('select[name="sub_in"]');
+  subOut.innerHTML = '';
+  subIn.innerHTML = '';
+  const onCourtNames = on_court.map(p=>p.name);
+  on_court.forEach(p => subOut.innerHTML += `<option>${p.name}</option>`);
+  roster.forEach(p => { if(!onCourtNames.includes(p.name)) subIn.innerHTML += `<option>${p.name}</option>` });
+}
+
+// ------------------ POINTS ------------------
 function updateCourtPoints(delta){
-    const playerNames = Array.from(document.querySelectorAll('.court .player-name'))
-                             .map(span => span.textContent);
-
-    fetch('/update_points', {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({delta: delta, players: playerNames})
-    })
-    .then(res => res.json())
-    .then(data => {
-        playerNames.forEach(name => {
-            const courtSpan = document.getElementById(`score-court-${CSS.escape(name)}`);
-            const rosterSpan = document.getElementById(`score-roster-${CSS.escape(name)}`);
-            if(courtSpan) courtSpan.textContent = `(${data[name]})`;
-            if(rosterSpan) rosterSpan.textContent = `(${data[name]})`;
-        });
-    });
+  const playerNames = onCourtGlobal.map(p=>p.name);
+  fetch('/update_points', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({delta, players: playerNames})
+  }).then(res=>res.json())
+    .then(data=>updateCourtUI({on_court: onCourtGlobal, roster: data.roster || []}));
 }
 
-// ===================== REFRESH SCORES =====================
-function refreshCourtScores(){
-    updateCourtPoints(0);
-}
-window.addEventListener('load', refreshCourtScores);
-
-// ===================== ADJUST LINEUP SWAP =====================
-// ===================== ADJUST LINEUP SWAP =====================
-let adjustMode = false;
-let firstSelected = null;
-const adjustBtn = document.getElementById('adjustLineupBtn');
-const court = document.getElementById('court');
-
-adjustBtn.addEventListener('click', () => {
-    adjustMode = !adjustMode;
-    if(adjustMode){
-        adjustBtn.classList.add('active');
-        court.classList.add('adjust-active');
-    } else {
-        adjustBtn.classList.remove('active');
-        court.classList.remove('adjust-active');
-        document.querySelectorAll('.player').forEach(p => p.classList.remove('selected'));
-        firstSelected = null;
-    }
+// ------------------ ROTATE ------------------
+document.getElementById('rotate').addEventListener('click', ()=>{
+  fetch('/rotate', {method:'POST'})
+    .then(res=>res.json())
+    .then(data=>updateCourtUI(data));
 });
 
-function saveCourtOrder(){
-    const order = Array.from(court.querySelectorAll('.player-name')).map(p => p.textContent);
-    fetch('/update_court', {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify(order)
-    });
+// ------------------ SUB ------------------
+document.getElementById('subForm').addEventListener('submit', e=>{
+  e.preventDefault();
+  const sub_out = e.target.sub_out.value;
+  const sub_in = e.target.sub_in.value;
+  fetch('/make_sub', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({sub_out, sub_in})
+  }).then(res=>res.json())
+    .then(data=>updateCourtUI(data));
+});
+
+// ------------------ ADJUST SWAPS INSTANT ------------------
+let adjustMode=false, firstSelected=null;
+const adjustBtn = document.getElementById('adjustLineupBtn');
+const courtDiv = document.getElementById('court');
+
+adjustBtn.addEventListener('click', ()=>{
+  adjustMode = !adjustMode;
+  if(adjustMode){
+    adjustBtn.classList.add('active');
+    courtDiv.classList.add('adjust-active');
+  } else {
+    adjustBtn.classList.remove('active');
+    courtDiv.classList.remove('adjust-active');
+    document.querySelectorAll('.player').forEach(p=>p.classList.remove('selected'));
+    firstSelected=null;
+  }
+});
+
+function swapPlayersInstant(div1, div2){
+  const idx1 = parseInt(div1.dataset.index);
+  const idx2 = parseInt(div2.dataset.index);
+
+  // Swap DOM
+  const tempHTML = div1.innerHTML;
+  div1.innerHTML = div2.innerHTML;
+  div2.innerHTML = tempHTML;
+
+  // Swap global array
+  [onCourtGlobal[idx1], onCourtGlobal[idx2]] = [onCourtGlobal[idx2], onCourtGlobal[idx1]];
+
+  // Refresh scores
+  updateCourtPoints(0);
+
+  // Send new order to server to save swap
+  fetch('/update_court', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(onCourtGlobal.map(p => p.name))
+  });
 }
 
-// Swap content of two player divs
-function swapPlayers(div1, div2){
-    const number1 = div1.querySelector('.player-number').textContent;
-    const name1 = div1.querySelector('.player-name').textContent;
-    const img1 = div1.querySelector('img').src;
-
-    const number2 = div2.querySelector('.player-number').textContent;
-    const name2 = div2.querySelector('.player-name').textContent;
-    const img2 = div2.querySelector('img').src;
-
-    div1.querySelector('.player-number').textContent = number2;
-    div1.querySelector('.player-name').textContent = name2;
-    div1.querySelector('img').src = img2;
-
-    div2.querySelector('.player-number').textContent = number1;
-    div2.querySelector('.player-name').textContent = name1;
-    div2.querySelector('img').src = img1;
+// Init click listeners
+function initCourtClicks(){
+  document.querySelectorAll('#court .player').forEach(div=>{
+    div.onclick = ()=>{
+      if(!adjustMode) return;
+      if(!firstSelected){ firstSelected=div; div.classList.add('selected'); }
+      else if(div!==firstSelected){
+        swapPlayersInstant(firstSelected, div);
+        firstSelected.classList.remove('selected');
+        div.classList.remove('selected');
+        firstSelected=null;
+      }
+    }
+  });
 }
+initCourtClicks();
 
-// Attach click listeners to all court players
-function initCourtClickListeners(){
-    court.querySelectorAll('.player').forEach(player => {
-        player.addEventListener('click', () => {
-            if(!adjustMode) return;
-
-            if(firstSelected === null){
-                firstSelected = player;
-                player.classList.add('selected');
-            } else if(player !== firstSelected){
-                // Swap contents
-                swapPlayers(firstSelected, player);
-
-                // Unhighlight both
-                firstSelected.classList.remove('selected');
-                player.classList.remove('selected');
-
-                // Reset for next pair
-                firstSelected = null;
-
-                saveCourtOrder();
-                refreshCourtScores();
-            }
-        });
-    });
-}
-
-// Initialize listeners on page load
-initCourtClickListeners();
+// ------------------ INITIAL UI RENDER ------------------
+updateCourtUI({on_court: onCourtGlobal, roster: rosterGlobal});
 
 </script>
-
 </body>
 </html>
