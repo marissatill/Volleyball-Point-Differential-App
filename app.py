@@ -13,6 +13,8 @@ for p in roster_data:
 green_clicks = 0
 red_clicks = 0
 
+history = []
+
 on_court = deepcopy(roster_data[:6])
 
 @app.route("/")
@@ -51,19 +53,28 @@ def make_sub():
 
 @app.route("/update_points", methods=["POST"])
 def update_points():
-    global green_clicks, red_clicks
+    global green_clicks, red_clicks, history
     data = request.get_json()
     delta = data.get("delta", 0)
     players = data.get("players", [])
 
+    # Update counters
     if delta == 1:
         green_clicks += 1
     elif delta == -1:
         red_clicks += 1
 
+    # Apply points
     for p in roster_data:
         if p["name"] in players:
             p["score"] += delta
+
+    # Save this action to history
+    history.append({
+        "delta": delta,
+        "players": players
+    })
+
     return jsonify({
         "roster": roster_data,
         "green_clicks": green_clicks,
@@ -106,6 +117,33 @@ def new_match():
         "green_clicks": green_clicks,
         "red_clicks": red_clicks,
         "roster": roster_data
+    })
+
+@app.route("/undo", methods=["POST"])
+def undo():
+    global green_clicks, red_clicks, history
+    if not history:
+        return jsonify({"message":"Nothing to undo"}), 400
+
+    last_action = history.pop()
+    delta = last_action["delta"]
+    players = last_action["players"]
+
+    # Reverse points
+    reverse_delta = -delta
+    if delta == 1:
+        green_clicks -= 1
+    elif delta == -1:
+        red_clicks -= 1
+
+    for p in roster_data:
+        if p["name"] in players:
+            p["score"] += reverse_delta
+
+    return jsonify({
+        "roster": roster_data,
+        "green_clicks": green_clicks,
+        "red_clicks": red_clicks
     })
 
 if __name__ == "__main__":

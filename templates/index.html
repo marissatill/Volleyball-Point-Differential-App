@@ -43,12 +43,12 @@ button#adjustLineupBtn.active { outline: 3px solid #FF6C0C; }
 <div class="titles">
   <h2>Roster</h2>
   <h2 style="visibility:hidden;">Placeholder</h2>
-  <h2>Substitutions</h2>
+  <h2>Game</h2>
 </div>
 
 <div class="container">
 
-  <!-- Roster -->
+  <!-- Roster (Left Column) -->
   <div class="roster">
     {% for p in roster %}
     <div class="player-item" style="border-color: hsl({{ loop.index*50 % 360 }},100%,50%)">
@@ -60,7 +60,7 @@ button#adjustLineupBtn.active { outline: 3px solid #FF6C0C; }
     {% endfor %}
   </div>
 
-  <!-- Court -->
+  <!-- Court (Center Column) -->
   <div class="court-container">
     <div class="court" id="court">
       <div class="net">Lineup</div>
@@ -72,7 +72,7 @@ button#adjustLineupBtn.active { outline: 3px solid #FF6C0C; }
         <span class="player-score" id="score-court-{{p.name}}">({{p.score}})</span>
       </div>
       {% endfor %}
-    </div> <!-- /.court -->
+    </div>
 
     <!-- Buttons -->
     <div class="court-buttons">
@@ -81,8 +81,7 @@ button#adjustLineupBtn.active { outline: 3px solid #FF6C0C; }
     </div>
 
     <!-- Points -->
-    <div style="display:flex; justify-content:center; gap:20px; margin-top:5px;">
-
+    <div style="display:flex; justify-content:center; gap:20px; margin-top:15px;">
       <div style="display:flex; flex-direction:column; align-items:center; gap:5px;">
         <div style="text-align:center; font-weight:bold; margin-bottom:5px;">Caltech</div>
         <button type="button" id="addPointBtn" onclick="updateCourtPoints(1)"
@@ -90,7 +89,6 @@ button#adjustLineupBtn.active { outline: 3px solid #FF6C0C; }
           <span id="greenClicks">{{ green_clicks }}</span>
         </button>
       </div>
-
       <div style="display:flex; flex-direction:column; align-items:center; gap:5px;">
         <div style="text-align:center; font-weight:bold; margin-bottom:5px;">Opponent</div>
         <button type="button" id="removePointBtn" onclick="updateCourtPoints(-1)"
@@ -98,50 +96,60 @@ button#adjustLineupBtn.active { outline: 3px solid #FF6C0C; }
           <span id="redClicks">{{ red_clicks }}</span>
         </button>
       </div>
-
       <div style="display:flex; flex-direction:column; align-items:center; gap:5px;">
         <div style="text-align:center; font-weight:bold; margin-bottom:5px;">Individual (-)</div>
         <button type="button" id="individualBtn"
-                style="font-size:16px; padding:8px 16px; background:#FF6666; color:white; border-radius:8px; border:none; cursor:pointer;"
+                style="font-size:16px; padding:8px 16px; background:#8A2BE2; color:white; border-radius:8px; border:none; cursor:pointer;"
                 onclick="toggleIndividual()">
           Select Player
         </button>
       </div>
-
-    </div> <!-- /.points -->
-  </div> <!-- /.court-container -->
-
-  <!-- Substitutions (moved outside court-container) -->
-  <div class="subs">
-    <form id="subForm">
-      <div class="sub-row">
-        <label>Sub Out:</label>
-        <select name="sub_out"></select>
-      </div>
-      <div class="sub-row">
-        <label>Sub In:</label>
-        <select name="sub_in"></select>
-      </div>
-      <button type="submit">Make Sub</button>
-    </form>
-
-    <!-- Game -->
-  <div class="game-section" style="margin-top:20px; text-align:center;">
-    <h2>Game</h2>
-    <div style="display:flex; justify-content:center; gap:20px; margin-top:10px;">
-      <button type="button" id="newSetBtn"
-              style="font-size:12px; padding:12px 25px; background:#007bff; color:white; border-radius:8px; border:none; cursor:pointer;">
-        New Set
-      </button>
-      <button type="button" id="newMatchBtn"
-              style="font-size:12px; padding:12px 25px; background:#007bff; color:white; border-radius:8px; border:none; cursor:pointer;">
-        New Match
+    </div>
+    <div style="display:flex; flex-direction:column; align-items:center; gap:5px; margin-top:15px;">
+      <button type="button" id="undoBtn"
+              style="font-size:12px; padding:12px 25px; background:#FFA500; color:white; border-radius:8px; border:none; cursor:pointer;">
+        Undo
       </button>
     </div>
-  </div>
+  </div> <!-- /.court-container -->
 
-  </div> <!-- /.subs -->
+  <!-- Right Column: Game + Substitutions -->
+  <div class="subs" style="display:flex; flex-direction:column; gap:20px;">
+
+    <!-- Game Section -->
+    <div class="game-section" style="text-align:center;">
+      <div style="display:flex; justify-content:center; gap:20px; margin-top:10px;">
+        <button type="button" id="newSetBtn"
+                style="font-size:12px; padding:12px 25px; background:#007bff; color:white; border-radius:8px; border:none; cursor:pointer;">
+          New Set
+        </button>
+        <button type="button" id="newMatchBtn"
+                style="font-size:12px; padding:12px 25px; background:#007bff; color:white; border-radius:8px; border:none; cursor:pointer;">
+          New Match
+        </button>
+      </div>
+    </div>
+
+    <!-- Substitutions Section -->
+    <div style="margin-top:30px;">
+      <h2>Substitutions</h2>
+      <form id="subForm">
+        <div class="sub-row">
+          <label>Sub Out:</label>
+          <select name="sub_out"></select>
+        </div>
+        <div class="sub-row">
+          <label>Sub In:</label>
+          <select name="sub_in"></select>
+        </div>
+        <button type="submit">Make Sub</button>
+      </form>
+    </div>
+
+  </div> <!-- /.right column -->
+
 </div> <!-- /.container -->
+
 
 <script>
 // ------------------ GLOBAL ------------------
@@ -332,6 +340,18 @@ document.getElementById('newMatchBtn').addEventListener('click', async () => {
   greenClicks = data.green_clicks;
   redClicks = data.red_clicks;
   updateCourtUI({on_court:onCourtGlobal, roster:rosterGlobal});
+});
+
+// ------------------ UNDO BUTTON ------------------
+document.getElementById('undoBtn').addEventListener('click', async () => {
+  const res = await fetch('/undo', { method:'POST' });
+  if(res.ok){
+    const data = await res.json();
+    rosterGlobal = data.roster;
+    greenClicks = data.green_clicks;
+    redClicks = data.red_clicks;
+    updateCourtUI({on_court:onCourtGlobal, roster:rosterGlobal});
+  }
 });
 
 // ------------------ INITIAL RENDER ------------------
