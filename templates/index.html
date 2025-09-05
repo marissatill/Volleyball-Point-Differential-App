@@ -72,7 +72,7 @@ button#adjustLineupBtn.active { outline: 3px solid #FF6C0C; }
         <span class="player-score" id="score-court-{{p.name}}">({{p.score}})</span>
       </div>
       {% endfor %}
-    </div>
+    </div> <!-- /.court -->
 
     <!-- Buttons -->
     <div class="court-buttons">
@@ -85,22 +85,32 @@ button#adjustLineupBtn.active { outline: 3px solid #FF6C0C; }
 
       <div style="display:flex; flex-direction:column; align-items:center; gap:5px;">
         <div style="text-align:center; font-weight:bold; margin-bottom:5px;">Caltech</div>
-        <button type="button" id="addPointBtn" onclick="updateCourtPoints(1)" style="font-size:22px; padding:15px 30px; background:#28a745; color:white; border-radius:8px;">
+        <button type="button" id="addPointBtn" onclick="updateCourtPoints(1)"
+                style="font-size:24px; padding:18px 35px; background:#28a745; color:white; border-radius:8px; border:none; cursor:pointer;">
           <span id="greenClicks">{{ green_clicks }}</span>
         </button>
       </div>
 
       <div style="display:flex; flex-direction:column; align-items:center; gap:5px;">
         <div style="text-align:center; font-weight:bold; margin-bottom:5px;">Opponent</div>
-        <button type="button" id="removePointBtn" onclick="updateCourtPoints(-1)" style="font-size:22px; padding:15px 30px; background:#dc3545; color:white; border-radius:8px;">
+        <button type="button" id="removePointBtn" onclick="updateCourtPoints(-1)"
+                style="font-size:24px; padding:18px 35px; background:#dc3545; color:white; border-radius:8px; border:none; cursor:pointer;">
           <span id="redClicks">{{ red_clicks }}</span>
         </button>
       </div>
 
-    </div>
-  </div>
+      <div style="display:flex; flex-direction:column; align-items:center; gap:5px;">
+        <div style="text-align:center; font-weight:bold; margin-bottom:5px;">Individual (-)</div>
+        <button type="button" id="individualBtn"
+                style="font-size:16px; padding:8px 16px; background:#ff8800; color:white; border-radius:8px; border:none; cursor:pointer;">
+          Select Player
+        </button>
+      </div>
 
-  <!-- Substitutions -->
+    </div> <!-- /.points -->
+  </div> <!-- /.court-container -->
+
+  <!-- Substitutions (moved outside court-container) -->
   <div class="subs">
     <form id="subForm">
       <div class="sub-row">
@@ -113,9 +123,10 @@ button#adjustLineupBtn.active { outline: 3px solid #FF6C0C; }
       </div>
       <button type="submit">Make Sub</button>
     </form>
-  </div>
+  </div> <!-- /.subs -->
 
-</div>
+</div> <!-- /.container -->
+
 
 <script>
 // ------------------ GLOBAL ------------------
@@ -126,16 +137,16 @@ let redClicks = {{ red_clicks }};
 
 // ------------------ UPDATE UI ------------------
 function updateCourtUI(data){
-  const {on_court, roster} = data;
-  onCourtGlobal = on_court;
+  const { on_court, roster } = data;
 
+  // Update court
   const courtDivs = document.querySelectorAll('#court .player');
   courtDivs.forEach((div, idx) => {
     const player = on_court[idx];
     div.querySelector('.player-number').textContent = player.number;
     div.querySelector('.player-name').textContent = player.name;
     div.querySelector('img').src = player.image ? `/static/${player.image}` : '/static/default.png';
-    const score = roster.find(p=>p.name===player.name)?.score ?? player.score;
+    const score = roster.find(p => p.name === player.name)?.score ?? 0;
     div.querySelector('.player-score').textContent = `(${score})`;
   });
 
@@ -160,103 +171,123 @@ function updateCourtUI(data){
 }
 
 // ------------------ POINTS ------------------
-function updateCourtPoints(delta){
-  if(delta===1) greenClicks++;
-  else if(delta===-1) redClicks++;
+async function updateCourtPoints(delta, players=null) {
+  const names = players || onCourtGlobal.map(p => p.name);
 
-  // Update counters inside buttons
-  document.getElementById('greenClicks').textContent = greenClicks;
-  document.getElementById('redClicks').textContent = redClicks;
-
-  const playerNames = onCourtGlobal.map(p=>p.name);
-  fetch('/update_points', {
+  const res = await fetch('/update_points', {
     method:'POST',
     headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({delta, players: playerNames})
-  }).then(res=>res.json())
-    .then(data=>updateCourtUI({on_court:onCourtGlobal, roster:data.roster}));
+    body: JSON.stringify({delta, players: names})
+  });
+  const data = await res.json();
+
+  // Update local globals
+  rosterGlobal = data.roster;
+  greenClicks = data.green_clicks;
+  redClicks = data.red_clicks;
+
+  // Refresh UI
+  updateCourtUI({on_court: onCourtGlobal, roster: rosterGlobal});
 }
 
 // ------------------ ROTATE ------------------
-document.getElementById('rotate').addEventListener('click', ()=>{
-  fetch('/rotate', {method:'POST'})
-    .then(res=>res.json())
-    .then(data=>updateCourtUI(data));
+document.getElementById('rotate').addEventListener('click', async () => {
+  const res = await fetch('/rotate', {method:'POST'});
+  const data = await res.json();
+  onCourtGlobal = data.on_court;
+  updateCourtUI(data);
 });
 
 // ------------------ SUB ------------------
-document.getElementById('subForm').addEventListener('submit', e=>{
+document.getElementById('subForm').addEventListener('submit', async e => {
   e.preventDefault();
   const sub_out = e.target.sub_out.value;
   const sub_in = e.target.sub_in.value;
-  fetch('/make_sub', {
+
+  const res = await fetch('/make_sub', {
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body: JSON.stringify({sub_out, sub_in})
-  }).then(res=>res.json())
-    .then(data=>updateCourtUI(data));
+  });
+  const data = await res.json();
+  onCourtGlobal = data.on_court;
+  updateCourtUI(data);
 });
 
-// ------------------ ADJUST SWAPS ------------------
-let adjustMode=false, firstSelected=null;
+// ------------------ ADJUST LINEUP ------------------
+let adjustMode = false, firstSelected = null;
 const adjustBtn = document.getElementById('adjustLineupBtn');
-const courtDiv = document.getElementById('court');
+const courtContainer = document.getElementById('court');
 
-adjustBtn.addEventListener('click', ()=>{
+adjustBtn.addEventListener('click', () => {
   adjustMode = !adjustMode;
   if(adjustMode){
     adjustBtn.classList.add('active');
-    courtDiv.classList.add('adjust-active');
+    courtContainer.classList.add('adjust-active');
   } else {
     adjustBtn.classList.remove('active');
-    courtDiv.classList.remove('adjust-active');
-    document.querySelectorAll('.player').forEach(p=>p.classList.remove('selected'));
-    firstSelected=null;
+    courtContainer.classList.remove('adjust-active');
+    document.querySelectorAll('.player').forEach(p => p.classList.remove('selected'));
+    firstSelected = null;
   }
 });
 
-function swapPlayersInstant(div1, div2){
-  const idx1 = parseInt(div1.dataset.index);
-  const idx2 = parseInt(div2.dataset.index);
+// Delegate swap clicks to parent
+courtContainer.addEventListener('click', async (e) => {
+  const div = e.target.closest('.player');
+  if(!div) return;
 
-  // Swap DOM
-  const tempHTML = div1.innerHTML;
-  div1.innerHTML = div2.innerHTML;
-  div2.innerHTML = tempHTML;
+  // Handle adjust swaps
+  if(adjustMode){
+    if(!firstSelected){ firstSelected = div; div.classList.add('selected'); }
+    else if(div !== firstSelected){
+      const idx1 = parseInt(firstSelected.dataset.index);
+      const idx2 = parseInt(div.dataset.index);
 
-  // Swap global array
-  [onCourtGlobal[idx1], onCourtGlobal[idx2]] = [onCourtGlobal[idx2], onCourtGlobal[idx1]];
+      // Swap in onCourtGlobal
+      [onCourtGlobal[idx1], onCourtGlobal[idx2]] = [onCourtGlobal[idx2], onCourtGlobal[idx1]];
 
-  // Refresh scores
-  updateCourtPoints(0);
+      // Swap DOM content
+      const tempHTML = firstSelected.innerHTML;
+      firstSelected.innerHTML = div.innerHTML;
+      div.innerHTML = tempHTML;
 
-  // Save swap to server
-  fetch('/update_court', {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify(onCourtGlobal.map(p=>p.name))
-  });
-}
+      // Refresh scores
+      await updateCourtPoints(0);
 
-// Init click listeners
-function initCourtClicks(){
-  document.querySelectorAll('#court .player').forEach(div=>{
-    div.onclick = ()=>{
-      if(!adjustMode) return;
-      if(!firstSelected){ firstSelected=div; div.classList.add('selected'); }
-      else if(div!==firstSelected){
-        swapPlayersInstant(firstSelected, div);
-        firstSelected.classList.remove('selected');
-        div.classList.remove('selected');
-        firstSelected=null;
-      }
+      firstSelected.classList.remove('selected');
+      div.classList.remove('selected');
+      firstSelected = null;
+
+      // Update server order
+      await fetch('/update_court', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(onCourtGlobal.map(p=>p.name))
+      });
     }
-  });
-}
-initCourtClicks();
+    return;
+  }
+
+  // Handle individual (-)
+  if(individualMode){
+    const idx = parseInt(div.dataset.index);
+    const player = onCourtGlobal[idx];
+
+    await updateCourtPoints(-1, [player.name]);
+
+    individualMode = false;
+    courtContainer.classList.remove('adjust-active');
+  }
+});
+
+// ------------------ INDIVIDUAL MODE BUTTON ------------------
+let individualMode = false;
+document.getElementById('individualBtn').addEventListener('click', () => {
+  individualMode = true;
+  courtContainer.classList.add('adjust-active');
+});
 
 // ------------------ INITIAL RENDER ------------------
 updateCourtUI({on_court:onCourtGlobal, roster:rosterGlobal});
 </script>
-</body>
-</html>
