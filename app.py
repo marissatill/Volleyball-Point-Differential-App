@@ -84,5 +84,29 @@ def update_court():
             on_court = new_order
     return ("", 204)
 
+@app.route("/new_set", methods=["POST"])
+def new_set():
+    global green_clicks, red_clicks
+    green_clicks = 0
+    red_clicks = 0
+    return jsonify({
+        "green_clicks": green_clicks,
+        "red_clicks": red_clicks,
+        "roster": roster_data  # scores remain unchanged
+    })
+
+@app.route("/new_match", methods=["POST"])
+def new_match():
+    global green_clicks, red_clicks
+    green_clicks = 0
+    red_clicks = 0
+    for p in roster_data:
+        p["score"] = 0
+    return jsonify({
+        "green_clicks": green_clicks,
+        "red_clicks": red_clicks,
+        "roster": roster_data
+    })
+
 if __name__ == "__main__":
     app.run(debug=True)

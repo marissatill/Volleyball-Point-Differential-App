@@ -102,7 +102,8 @@ button#adjustLineupBtn.active { outline: 3px solid #FF6C0C; }
       <div style="display:flex; flex-direction:column; align-items:center; gap:5px;">
         <div style="text-align:center; font-weight:bold; margin-bottom:5px;">Individual (-)</div>
         <button type="button" id="individualBtn"
-                style="font-size:16px; padding:8px 16px; background:#ff8800; color:white; border-radius:8px; border:none; cursor:pointer;">
+                style="font-size:16px; padding:8px 16px; background:#FF6666; color:white; border-radius:8px; border:none; cursor:pointer;"
+                onclick="toggleIndividual()">
           Select Player
         </button>
       </div>
@@ -123,10 +124,24 @@ button#adjustLineupBtn.active { outline: 3px solid #FF6C0C; }
       </div>
       <button type="submit">Make Sub</button>
     </form>
+
+    <!-- Game -->
+  <div class="game-section" style="margin-top:20px; text-align:center;">
+    <h2>Game</h2>
+    <div style="display:flex; justify-content:center; gap:20px; margin-top:10px;">
+      <button type="button" id="newSetBtn"
+              style="font-size:12px; padding:12px 25px; background:#007bff; color:white; border-radius:8px; border:none; cursor:pointer;">
+        New Set
+      </button>
+      <button type="button" id="newMatchBtn"
+              style="font-size:12px; padding:12px 25px; background:#007bff; color:white; border-radius:8px; border:none; cursor:pointer;">
+        New Match
+      </button>
+    </div>
+  </div>
+
   </div> <!-- /.subs -->
-
 </div> <!-- /.container -->
-
 
 <script>
 // ------------------ GLOBAL ------------------
@@ -270,22 +285,53 @@ courtContainer.addEventListener('click', async (e) => {
   }
 
   // Handle individual (-)
-  if(individualMode){
+  if(individualActive){
     const idx = parseInt(div.dataset.index);
     const player = onCourtGlobal[idx];
 
     await updateCourtPoints(-1, [player.name]);
 
-    individualMode = false;
+    // Reset button highlight after selection
+    individualActive = false;
+    document.getElementById('individualBtn').style.outline = 'none';
     courtContainer.classList.remove('adjust-active');
   }
 });
 
 // ------------------ INDIVIDUAL MODE BUTTON ------------------
-let individualMode = false;
+let individualActive = false;
 document.getElementById('individualBtn').addEventListener('click', () => {
-  individualMode = true;
-  courtContainer.classList.add('adjust-active');
+  individualActive = !individualActive;
+  const btn = document.getElementById('individualBtn');
+  if(individualActive){
+    btn.style.outline = '3px solid #FF6C0C'; // Highlight active
+    courtContainer.classList.add('adjust-active');
+  } else {
+    btn.style.outline = 'none';
+    courtContainer.classList.remove('adjust-active');
+  }
+});
+
+// ------------------ NEW SET / MATCH ------------------
+document.getElementById('newSetBtn').addEventListener('click', async () => {
+  const res = await fetch('/new_set', { method:'POST' });
+  const data = await res.json();
+
+  // Only reset green/red clicks (points)
+  greenClicks = data.green_clicks;
+  redClicks = data.red_clicks;
+  updateCourtUI({on_court:onCourtGlobal, roster:rosterGlobal});
+});
+
+document.getElementById('newMatchBtn').addEventListener('click', async () => {
+  const res = await fetch('/new_match', { method:'POST' });
+  const data = await res.json();
+
+  // Reset everything: scores on roster + green/red clicks
+  rosterGlobal = data.roster;
+  greenClicks = data.green_clicks;
+  redClicks = data.red_clicks;
+  updateCourtUI({on_court:onCourtGlobal, roster:rosterGlobal});
 });
 
 // ------------------ INITIAL RENDER ------------------
