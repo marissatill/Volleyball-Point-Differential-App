@@ -80,7 +80,8 @@ button#adjustLineupBtn.active { outline: 3px solid #FF6C0C; }
     <div class="player-item" style="border-color: hsl({{ loop.index*50 % 360 }},100%,50%)">
         <img src="{{ url_for('static', filename=p.image) if p.image else url_for('static', filename='default.png') }}">
         <span class="player-number">{{p.number}}</span>
-        <span>{{ p.name }}</span>
+        <span class="player-name">{{ p.name }}</span>
+        <span class="player-score" id="score-roster-{{p.name}}">({{p.score}})</span>
     </div>
     {% endfor %}
 </div>
@@ -93,21 +94,28 @@ button#adjustLineupBtn.active { outline: 3px solid #FF6C0C; }
         <div class="player" data-index="{{loop.index0}}">
             <img src="{{ url_for('static', filename=p.image) if p.image else url_for('static', filename='default.png') }}">
             <span class="player-number">{{p.number}}</span>
-            <span>{{p.name}}</span>
+            <span class="player-name">{{ p.name }}</span>
+            <span class="player-score" id="score-court-{{p.name}}">({{p.score}})</span>
         </div>
         {% endfor %}
     </div>
     <div class="court-buttons">
-        <form method="post" style="display:inline;">
+        <form method="post" style="display:inline;" onsubmit="setTimeout(refreshCourtScores, 100)">
             <button type="submit" name="rotate" id="rotate">Rotate</button>
         </form>
         <button type="button" id="adjustLineupBtn">Adjust Lineup</button>
+    </div>
+
+    <!-- Point Buttons -->
+    <div class="court-buttons">
+        <button type="button" onclick="updateCourtPoints(1)" style="font-size:18px; padding:10px 20px; background:#28a745; color:white;">+ Add Point</button>
+        <button type="button" onclick="updateCourtPoints(-1)" style="font-size:18px; padding:10px 20px; background:#dc3545; color:white;">- Remove Point</button>
     </div>
 </div>
 
 <!-- Substitutions -->
 <div class="subs">
-    <form method="post">
+    <form method="post" onsubmit="setTimeout(refreshCourtScores, 100)">
         <div class="sub-row">
             <label>Sub Out:</label>
             <select name="sub_out">
@@ -120,9 +128,9 @@ button#adjustLineupBtn.active { outline: 3px solid #FF6C0C; }
             <label>Sub In:</label>
             <select name="sub_in">
                 {% for p in roster %}
-                {% if p not in on_court %}
-                <option>{{p.name}}</option>
-                {% endif %}
+                    {% if p.name not in on_court|map(attribute='name')|list %}
+                    <option>{{ p.name }}</option>
+                    {% endif %}
                 {% endfor %}
             </select>
         </div>
@@ -131,11 +139,39 @@ button#adjustLineupBtn.active { outline: 3px solid #FF6C0C; }
 </div>
 
 <script>
-// Adjust lineup logic
+// ===================== POINTS TRACKING =====================
+function updateCourtPoints(delta){
+    const playerNames = Array.from(document.querySelectorAll('.court .player-name'))
+                             .map(span => span.textContent);
+
+    fetch('/update_points', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({delta: delta, players: playerNames})
+    })
+    .then(res => res.json())
+    .then(data => {
+        playerNames.forEach(name => {
+            const courtSpan = document.getElementById(`score-court-${CSS.escape(name)}`);
+            const rosterSpan = document.getElementById(`score-roster-${CSS.escape(name)}`);
+            if(courtSpan) courtSpan.textContent = `(${data[name]})`;
+            if(rosterSpan) rosterSpan.textContent = `(${data[name]})`;
+        });
+    });
+}
+
+// ===================== REFRESH SCORES =====================
+function refreshCourtScores(){
+    updateCourtPoints(0);
+}
+window.addEventListener('load', refreshCourtScores);
+
+// ===================== ADJUST LINEUP SWAP =====================
+// ===================== ADJUST LINEUP SWAP =====================
 let adjustMode = false;
+let firstSelected = null;
 const adjustBtn = document.getElementById('adjustLineupBtn');
 const court = document.getElementById('court');
-let firstSelected = null;
 
 adjustBtn.addEventListener('click', () => {
     adjustMode = !adjustMode;
@@ -151,41 +187,63 @@ adjustBtn.addEventListener('click', () => {
 });
 
 function saveCourtOrder(){
-    const players = Array.from(court.querySelectorAll('.player'));
-    const order = players.map(p => p.querySelector('span:last-child').textContent);
-    // grab player names in current order
+    const order = Array.from(court.querySelectorAll('.player-name')).map(p => p.textContent);
     fetch('/update_court', {
         method:'POST',
         headers:{'Content-Type':'application/json'},
-        body: JSON.stringify(order) // send names
+        body: JSON.stringify(order)
     });
 }
 
-// Highlight both selected players before swap
-court.querySelectorAll('.player').forEach(player => {
-    player.addEventListener('click', () => {
-        if(!adjustMode) return;
+// Swap content of two player divs
+function swapPlayers(div1, div2){
+    const number1 = div1.querySelector('.player-number').textContent;
+    const name1 = div1.querySelector('.player-name').textContent;
+    const img1 = div1.querySelector('img').src;
 
-        if(firstSelected === null){
-            firstSelected = player;
-            player.classList.add('selected');
-        } else {
-            // Highlight second before swapping
-            player.classList.add('selected');
+    const number2 = div2.querySelector('.player-number').textContent;
+    const name2 = div2.querySelector('.player-name').textContent;
+    const img2 = div2.querySelector('img').src;
 
-            // Delay swap slightly to show highlight
-            setTimeout(()=>{
-                const temp = firstSelected.innerHTML;
-                firstSelected.innerHTML = player.innerHTML;
-                player.innerHTML = temp;
+    div1.querySelector('.player-number').textContent = number2;
+    div1.querySelector('.player-name').textContent = name2;
+    div1.querySelector('img').src = img2;
+
+    div2.querySelector('.player-number').textContent = number1;
+    div2.querySelector('.player-name').textContent = name1;
+    div2.querySelector('img').src = img1;
+}
+
+// Attach click listeners to all court players
+function initCourtClickListeners(){
+    court.querySelectorAll('.player').forEach(player => {
+        player.addEventListener('click', () => {
+            if(!adjustMode) return;
+
+            if(firstSelected === null){
+                firstSelected = player;
+                player.classList.add('selected');
+            } else if(player !== firstSelected){
+                // Swap contents
+                swapPlayers(firstSelected, player);
+
+                // Unhighlight both
                 firstSelected.classList.remove('selected');
                 player.classList.remove('selected');
+
+                // Reset for next pair
                 firstSelected = null;
+
                 saveCourtOrder();
-            }, 150);
-        }
+                refreshCourtScores();
+            }
+        });
     });
-});
+}
+
+// Initialize listeners on page load
+initCourtClickListeners();
+
 </script>
 
 </body>

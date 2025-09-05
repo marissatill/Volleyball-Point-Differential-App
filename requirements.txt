@@ -1,5 +1,6 @@
-flask
+Flask
+Jinja2
+Werkzeug
+itsdangerous
+click
 gunicorn
-psycopg2-binary
-sqlalchemy
-flask_sqlalchemy
