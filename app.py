@@ -1,71 +1,54 @@
-# from flask import Flask, render_template, request
-#
-# app = Flask(__name__)
-#
-# @app.route("/")
-# def home():
-#     return "<h1>Hello, Coach!</h1><p>This is our app.</p>"
-#
-# if __name__ == "__main__":
-#     app.run(debug=True)
-
-
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request
+from copy import deepcopy
+from roster_2025 import roster_data
 
 app = Flask(__name__)
 
-# ----- DATA -----
-# Sample roster, you can start empty or prefill
-roster = ["Alice", "Bob", "Charlie", "David", "Eve", "Frank", "Grace", "Hank"]
-on_court = roster[:6]  # first 6 players
-scores = {p: 0 for p in roster}
+on_court = deepcopy(roster_data[:6])
 
-# ----- ROUTES -----
 @app.route("/", methods=["GET", "POST"])
 def index():
-    global roster, on_court, scores
-    message = ""
-
+    global on_court
     if request.method == "POST":
-        # Add point to all on court
-        if "plus1" in request.form:
-            for p in on_court:
-                scores[p] += 1
-        elif "minus1" in request.form:
-            for p in on_court:
-                scores[p] -= 1
-        elif "add_player" in request.form:
-            name = request.form.get("player_name").strip()
-            if name and name not in roster:
-                roster.append(name)
-                scores[name] = 0
-                message = f"{name} added to roster."
-        elif "sub_out" in request.form:
-            out_p = request.form.get("sub_out")
-            in_p = request.form.get("sub_in")
-            if out_p in on_court and in_p in roster and in_p not in on_court:
-                idx = on_court.index(out_p)
-                on_court[idx] = in_p
-        elif "rotate" in request.form:
-            # Rotate clockwise: 0->5, 5->4, 4->3, 3->2, 2->1, 1->0
-            on_court[:] = [on_court[-1]] + on_court[:-1]
+        # Clockwise rotation for 2x3 grid
+        if "rotate" in request.form and len(on_court) == 6:
+            # Clockwise order: [0,1,2,5,4,3]
+            indices = [0,1,2,5,4,3]
+            rotated = [on_court[i] for i in indices[-1:] + indices[:-1]]
+            new_order = [None]*6
+            for orig_idx, new_player in zip(indices, rotated):
+                new_order[orig_idx] = new_player
+            on_court = new_order
 
-        return redirect(url_for("index"))
+        # Substitution
+        elif "sub_out" in request.form and "sub_in" in request.form:
+            out_name = request.form["sub_out"]
+            in_name = request.form["sub_in"]
 
-    # Prepare substitution options
-    sub_out_options = on_court
-    sub_in_options = [p for p in roster if p not in on_court]
+            # Find index of player to sub out
+            out_index = next((i for i, p in enumerate(on_court) if p["name"] == out_name), None)
+            # Find player object to sub in
+            in_player = next((p for p in roster_data if p["name"] == in_name), None)
 
-    return render_template(
-        "index.html",
-        roster=roster,
-        on_court=on_court,
-        scores=scores,
-        sub_out_options=sub_out_options,
-        sub_in_options=sub_in_options,
-        message=message
-    )
+            if out_index is not None and in_player:
+                on_court[out_index] = in_player  # swap in the current adjusted lineup
 
+    return render_template("index.html", roster=roster_data, on_court=on_court)
+
+@app.route("/update_court", methods=["POST"])
+def update_court():
+    global on_court
+    data = request.get_json()
+    if isinstance(data, list):
+        # Rebuild on_court in this new order
+        new_order = []
+        for name in data:
+            player = next((p for p in roster_data if p["name"] == name), None)
+            if player:
+                new_order.append(player)
+        if len(new_order) == len(on_court):
+            on_court = new_order
+    return ("", 204)
 
 if __name__ == "__main__":
     app.run(debug=True)

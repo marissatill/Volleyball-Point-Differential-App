@@ -1,0 +1,16 @@
+roster_data = [
+    {"number":"1", "name":"Marissa", "image":"roster_photos/marissa.png"},
+    {"number":"2", "name":"Jeylin", "image":"roster_photos/jeylin.png"},
+    {"number":"3", "name":"Stephanie", "image":"roster_photos/stephanie.png"},
+    {"number":"5", "name":"Lana", "image":"roster_photos/lana.png"},
+    {"number":"6", "name":"Rena", "image":None},
+    {"number":"8", "name":"Alize", "image":"roster_photos/alize.png"},
+    {"number":"9", "name":"Brittany", "image":"roster_photos/brittany.png"},
+    {"number":"10", "name":"Shreeya", "image":"roster_photos/shreeya.png"},
+    {"number":"11", "name":"Emma", "image":None},
+    {"number":"12", "name":"Ailsa", "image":"roster_photos/ailsa.png"},
+    {"number":"14", "name":"Veda", "image":None},
+    {"number":"16", "name":"Giulia", "image":"roster_photos/giulia.png"},
+    {"number":"17", "name":"Andrea", "image":"roster_photos/andrea.png"},
+    {"number":"22", "name":"Noelle", "image":"roster_photos/noelle.png"},
+]

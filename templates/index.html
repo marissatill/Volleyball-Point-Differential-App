@@ -1,73 +1,192 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Volleyball Point Tracker</title>
-  <style>
-    body { font-family: sans-serif; background: #f2f2f2; padding: 20px; }
-    h1 { text-align: center; }
-    .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 10px; }
-    .flex { display: flex; gap: 10px; flex-wrap: wrap; }
-    button { padding: 6px 12px; margin: 2px; }
-    select, input { padding: 6px; margin: 2px; }
-    .court { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(2, 60px); gap: 10px; margin: 20px 0; text-align: center; }
-    .player { border: 1px solid #333; border-radius: 6px; background: #e0e0e0; display: flex; justify-content: center; align-items: center; flex-direction: column; }
-    .net { grid-column: 1 / 4; text-align: center; font-weight: bold; margin-bottom: 10px; }
-  </style>
+<meta charset="UTF-8">
+<title>Caltech Volleyball Lineup Tracker</title>
+<style>
+body { margin:0; font-family:sans-serif; background-color:black; color:white; }
+h1 { color:#FF6C0C; text-align:center; margin-bottom:20px; }
+
+/* Titles row */
+.titles { display:grid; grid-template-columns:250px 1fr 250px; gap:20px; padding:0 20px; margin-bottom:5px; }
+.titles h2 { margin:0; text-align:center; color:white; }
+
+/* Container for the main content */
+.container { display:grid; grid-template-columns:250px 1fr 250px; gap:20px; padding:0 20px; }
+
+/* Roster */
+.roster { display:flex; flex-direction:column; gap:10px; margin-top:5px; }
+.player-item { display:flex; align-items:center; gap:10px; padding:5px; border-left:4px solid #0f0; cursor:pointer; font-family:monospace; }
+.player-item img { width:40px; height:40px; object-fit:cover; border-radius:50%; }
+.player-number { font-weight:bold; margin-right:5px; font-family:"Courier New", Courier, monospace; }
+
+/* Court */
+.court-container { display:flex; flex-direction:column; align-items:center; position:relative; margin-top:5px; }
+.court { display:grid; grid-template-columns: repeat(3, 140px); grid-template-rows: repeat(2, 140px); gap:15px; justify-content:center; align-items:center; margin-bottom:10px; }
+.court .player { display:flex; flex-direction:column; align-items:center; justify-content:center; background:#222; border-radius:10px; padding:10px; width:140px; height:140px; cursor:pointer; transition: transform 0.2s; }
+.court .player img { width:80px; height:80px; border-radius:50%; object-fit:cover; }
+.court .player.selected { outline: 3px solid #0ff; }
+
+.court.adjust-active { outline: 3px solid #FF6C0C; border-radius:12px; padding:8px; }
+
+.net {
+    grid-column: 1/4;
+    text-align: center;
+    font-weight: bold;
+    color: white;
+    font-size: 24px;
+    position:relative;
+    margin-bottom:10px;
+}
+.net::after {
+    content: "";
+    display: block;
+    height: 2px;
+    background: white;
+    width: calc(3*140px + 2*15px);
+    margin:5px auto 0 auto;
+}
+
+.court-buttons { display:flex; justify-content:center; gap:10px; margin:5px 0; }
+button { padding:6px 12px; cursor:pointer; border:none; border-radius:5px; font-size:14px; }
+button#rotate, button#adjustLineupBtn { background:#FF6C0C; color:white; transition: 0.2s; }
+button#adjustLineupBtn.active { outline: 3px solid #FF6C0C; }
+
+.subs { display:flex; flex-direction:column; gap:15px; margin-top:5px; }
+.subs h2 { text-align:center; margin:5px 0; color:white; }
+.subs form { display:flex; flex-direction:column; gap:10px; }
+.subs label { display:inline-block; margin-right:5px; font-size:16px; }
+.subs select { padding:4px; font-size:16px; }
+
+.sub-row { display:flex; align-items:center; gap:5px; }
+</style>
 </head>
 <body>
-<div class="container">
-  <h1>Volleyball Point Tracker</h1>
 
-  {% if message %}<p>{{ message }}</p>{% endif %}
+<h1>Caltech Volleyball Lineup Tracker</h1>
 
-  <h2>Roster</h2>
-  <ul>
-    {% for p in roster %}
-      <li>{{ p }} ({{ scores[p] }})</li>
-    {% endfor %}
-  </ul>
-
-  <form method="post">
-    <input type="text" name="player_name" placeholder="New player name">
-    <button type="submit" name="add_player">Add Player</button>
-  </form>
-
-  <h2>On Court</h2>
-  <div class="court">
-    <div class="net">NET</div>
-    {% for player in on_court %}
-      <div class="player">
-        <strong>{{ player }}</strong>
-        <span>+{{ scores[player] }}</span>
-      </div>
-    {% endfor %}
-  </div>
-
-  <form method="post">
-    <button type="submit" name="plus1">+1 to all on court</button>
-    <button type="submit" name="minus1">-1 to all on court</button>
-    <button type="submit" name="rotate">Rotate</button>
-  </form>
-
-  <h2>Substitutions</h2>
-  <form method="post">
-    <label>Sub Out:
-      <select name="sub_out">
-        {% for p in sub_out_options %}
-          <option value="{{ p }}">{{ p }}</option>
-        {% endfor %}
-      </select>
-    </label>
-    <label>Sub In:
-      <select name="sub_in">
-        {% for p in sub_in_options %}
-          <option value="{{ p }}">{{ p }}</option>
-        {% endfor %}
-      </select>
-    </label>
-    <button type="submit">Run Sub</button>
-  </form>
+<!-- Titles row -->
+<div class="titles">
+    <h2>Roster</h2>
+    <h2 style="visibility:hidden;">Placeholder</h2>
+    <h2>Substitutions</h2>
 </div>
+
+<div class="container">
+
+<!-- Roster -->
+<div class="roster">
+    {% for p in roster %}
+    <div class="player-item" style="border-color: hsl({{ loop.index*50 % 360 }},100%,50%)">
+        <img src="{{ url_for('static', filename=p.image) if p.image else url_for('static', filename='default.png') }}">
+        <span class="player-number">{{p.number}}</span>
+        <span>{{ p.name }}</span>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Court -->
+<div class="court-container">
+    <div class="court" id="court">
+        <div class="net">Lineup</div>
+        {% for p in on_court %}
+        <div class="player" data-index="{{loop.index0}}">
+            <img src="{{ url_for('static', filename=p.image) if p.image else url_for('static', filename='default.png') }}">
+            <span class="player-number">{{p.number}}</span>
+            <span>{{p.name}}</span>
+        </div>
+        {% endfor %}
+    </div>
+    <div class="court-buttons">
+        <form method="post" style="display:inline;">
+            <button type="submit" name="rotate" id="rotate">Rotate</button>
+        </form>
+        <button type="button" id="adjustLineupBtn">Adjust Lineup</button>
+    </div>
+</div>
+
+<!-- Substitutions -->
+<div class="subs">
+    <form method="post">
+        <div class="sub-row">
+            <label>Sub Out:</label>
+            <select name="sub_out">
+                {% for p in on_court %}
+                <option>{{p.name}}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="sub-row">
+            <label>Sub In:</label>
+            <select name="sub_in">
+                {% for p in roster %}
+                {% if p not in on_court %}
+                <option>{{p.name}}</option>
+                {% endif %}
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit">Make Sub</button>
+    </form>
+</div>
+
+<script>
+// Adjust lineup logic
+let adjustMode = false;
+const adjustBtn = document.getElementById('adjustLineupBtn');
+const court = document.getElementById('court');
+let firstSelected = null;
+
+adjustBtn.addEventListener('click', () => {
+    adjustMode = !adjustMode;
+    if(adjustMode){
+        adjustBtn.classList.add('active');
+        court.classList.add('adjust-active');
+    } else {
+        adjustBtn.classList.remove('active');
+        court.classList.remove('adjust-active');
+        document.querySelectorAll('.player').forEach(p => p.classList.remove('selected'));
+        firstSelected = null;
+    }
+});
+
+function saveCourtOrder(){
+    const players = Array.from(court.querySelectorAll('.player'));
+    const order = players.map(p => p.querySelector('span:last-child').textContent);
+    // grab player names in current order
+    fetch('/update_court', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(order) // send names
+    });
+}
+
+// Highlight both selected players before swap
+court.querySelectorAll('.player').forEach(player => {
+    player.addEventListener('click', () => {
+        if(!adjustMode) return;
+
+        if(firstSelected === null){
+            firstSelected = player;
+            player.classList.add('selected');
+        } else {
+            // Highlight second before swapping
+            player.classList.add('selected');
+
+            // Delay swap slightly to show highlight
+            setTimeout(()=>{
+                const temp = firstSelected.innerHTML;
+                firstSelected.innerHTML = player.innerHTML;
+                player.innerHTML = temp;
+                firstSelected.classList.remove('selected');
+                player.classList.remove('selected');
+                firstSelected = null;
+                saveCourtOrder();
+            }, 150);
+        }
+    });
+});
+</script>
+
 </body>
 </html>
